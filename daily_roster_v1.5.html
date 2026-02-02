@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="manifest" href="manifest.json">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+<title>Daily Roster Viewer</title>
+
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+
+<style>
+body{font-family:Segoe UI;background:#f4f9fc;margin:0}
+header{background:#007acc;color:#fff;padding:12px;text-align:center;font-weight:700}
+.wrap{max-width:480px;margin:12px auto;background:#fff;padding:12px;border-radius:10px}
+
+.controls{display:flex;gap:6px}
+button{background:#007acc;color:#fff;border:none;padding:6px 10px;border-radius:8px}
+.toggle button{flex:1}
+.active{background:#005f9e}
+
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{padding:6px;border-bottom:1px solid #ddd;text-align:center}
+th{background:#abd6de}
+
+.title{margin-top:10px;font-weight:700;text-align:center}
+.no{color:#777;text-align:center;padding:12px}
+
+@media (max-width: 480px){
+
+body{
+  font-size:18px;
+}
+
+header{
+  font-size:20px;
+  padding:16px 0;
+}
+
+button{
+  padding:12px 14px;
+  font-size:16px;
+}
+
+input[type="date"]{
+  font-size:16px;
+  padding:10px;
+}
+
+th,td{
+  font-size:16px;
+  padding:10px 6px;
+}
+
+.wrap{
+  max-width:100%;
+  margin:10px;
+  padding:14px;
+}
+
+}
+
+
+
+</style>
+
+</head>
+
+<body>
+
+<header>Daily Roster Viewer
+<button id="installBtn" style="display:none;float:right;margin-right:10px">
+📲 Install App
+</button>
+
+</header>
+
+
+
+<div class="wrap">
+
+<div class="controls">
+<button onclick="changeDay(-1)">◀ Prev</button>
+<input type="date" id="rosterDate">
+<button onclick="changeDay(1)">Next ▶</button>
+</div>
+
+<div class="controls toggle" style="margin-top:8px">
+<button id="b8" onclick="setMode('8h')">8 Hours</button>
+<button id="b6" class="active" onclick="setMode('6h')">6 Hours</button>
+</div>
+
+<div id="dayBox"></div>
+<div id="nightBox"></div>
+
+</div>
+
+<script>
+/* 🔥 FIREBASE CONFIG */
+firebase.initializeApp({
+ apiKey:"AIzaSyANN1IPnC6vODqIWiOpZgWutnP-LlmH48s",
+ authDomain:"gelanigama-roster-team-a.firebaseapp.com",
+ projectId:"gelanigama-roster-team-a"
+});
+
+const db=firebase.firestore();
+
+let currentDate=new Date();
+let currentMode="6h";
+const TEAM="team2Roster";   // change if needed
+
+document.getElementById("rosterDate").value=currentDate.toISOString().split("T")[0];
+
+/* ---------------- */
+
+function setMode(m){
+ currentMode=m;
+ b8.classList.toggle("active",m==="8h");
+ b6.classList.toggle("active",m==="6h");
+ load();
+}
+
+function changeDay(n){
+ currentDate.setDate(currentDate.getDate()+n);
+ rosterDate.value=currentDate.toISOString().split("T")[0];
+ load();
+}
+
+rosterDate.onchange=e=>{
+ currentDate=new Date(e.target.value);
+ load();
+}
+
+/* ---------------- LOAD FIRESTORE ---------------- */
+
+async function load(){
+
+ dayBox.innerHTML="Loading...";
+ nightBox.innerHTML="";
+
+ const id=currentDate.toISOString().split("T")[0];
+
+ const teams=["team1Roster","team2Roster","team3Roster"];
+
+ let dayRows=[];
+ let nightRows=[];
+
+ try{
+
+ for(const t of teams){
+
+   const doc=await db.collection(t).doc(id).get();
+   if(!doc.exists) continue;
+
+   const d=doc.data();
+   if(d.offDay) continue;
+
+   const rows=d.tellers||[];
+   if(!rows.length) continue;
+
+   const shift=rows[0].shift;
+
+   if(shift==="day") dayRows=rows;
+   if(shift==="night") nightRows=rows;
+ }
+
+ render("DAY TEAM",dayRows,dayBox);
+ render("NIGHT TEAM",nightRows,nightBox);
+
+ }catch(e){
+ dayBox.innerHTML=e.message;
+ }
+
+}
+
+/* ---------------- RENDER TABLE ---------------- */
+
+function render(title,list,box){
+
+ if(list.length===0){
+   box.innerHTML=`<div class="no">${title} empty</div>`;
+   return;
+ }
+
+ let h=`<div class="title">${title}</div>
+ <table>
+ <tr><th>Teller</th><th>Booth</th></tr>`;
+
+ list.forEach(r=>{
+   const booth=currentMode==="8h"?r.booth8:r.booth6;
+   h+=`<tr><td>${r.teller||"-"}</td><td>${booth||"-"}</td></tr>`;
+ });
+
+ h+="</table>";
+ box.innerHTML=h;
+}
+
+load();
+let deferredPrompt;
+const installBtn=document.getElementById("installBtn");
+
+window.addEventListener("beforeinstallprompt", e=>{
+ e.preventDefault();
+ deferredPrompt=e;
+ installBtn.style.display="inline-block";
+});
+
+installBtn.addEventListener("click", async ()=>{
+ if(!deferredPrompt) return;
+
+ deferredPrompt.prompt();
+ await deferredPrompt.userChoice;
+
+ deferredPrompt=null;
+ installBtn.style.display="none";
+});
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+
+</body>
+</html>
+
+
+
+
+
