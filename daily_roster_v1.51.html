@@ -61,6 +61,15 @@ th,td{
 
 }
 
+@media (prefers-color-scheme: dark){
+ body{background:#0f172a;color:#eee}
+ .wrap{background:#020617}
+ header{background:#020617}
+ th{background:#1e293b}
+ td{border-color:#1e293b}
+ button{background:#2563eb}
+ .active{background:#1d4ed8}
+}
 
 
 </style>
@@ -69,12 +78,22 @@ th,td{
 
 <body>
 
-<header>Daily Roster Viewer
+<header>
+Daily Roster Viewer
+<span id="netBadge"
+ style="margin-left:8px;
+ background:#16a34a;
+ padding:4px 10px;
+ border-radius:12px;
+ font-size:12px;">
+ONLINE
+</span>
+
 <button id="installBtn" style="display:none;float:right;margin-right:10px">
 📲 Install App
 </button>
-
 </header>
+
 
 
 
@@ -120,14 +139,22 @@ function setMode(m){
  b6.classList.toggle("active",m==="6h");
  load();
 }
+const saved=localStorage.getItem("lastDate");
+if(saved){
+ currentDate=new Date(saved);
+ rosterDate.value=saved;
+}
 
 function changeDay(n){
  currentDate.setDate(currentDate.getDate()+n);
  rosterDate.value=currentDate.toISOString().split("T")[0];
  load();
+  localStorage.setItem("lastDate",rosterDate.value);
+
 }
 
 rosterDate.onchange=e=>{
+  localStorage.setItem("lastDate",rosterDate.value);
  currentDate=new Date(e.target.value);
  load();
 }
@@ -218,10 +245,25 @@ installBtn.addEventListener("click", async ()=>{
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
 }
+  function updateNetworkBadge(){
+ const b=document.getElementById("netBadge");
+ if(navigator.onLine){
+  b.innerText="ONLINE";
+  b.style.background="#16a34a";
+ }else{
+  b.innerText="OFFLINE";
+  b.style.background="#dc2626";
+ }
+}
+window.addEventListener("online",updateNetworkBadge);
+window.addEventListener("offline",updateNetworkBadge);
+updateNetworkBadge();
+
 </script>
 
 </body>
 </html>
+
 
 
 
