@@ -1,111 +1,183 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Roster Manager v9</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Attendance - Roster Manager</title>
+
+<!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+
 <style>
-body{font-family:Segoe UI;margin:0;padding:0;}
-header{background:#007acc;color:#fff;padding:12px;text-align:center;}
-.wrap{max-width:600px;margin:20px auto;padding:12px;background:#f4f4f4;border-radius:10px;}
-input,button{padding:8px;margin:4px;border-radius:6px;border:1px solid #ccc;}
-button{background:#007acc;color:#fff;border:none;}
-table{width:100%;border-collapse:collapse;margin-top:12px;}
-th,td{border:1px solid #ccc;padding:6px;text-align:center;}
+body { font-family:Segoe UI, Arial; margin:0; background:#f4f9fc; }
+header { background:#007acc; color:#fff; padding:12px; font-weight:700; text-align:center; }
+.wrap { max-width:480px; margin:12px auto; background:#fff; padding:12px; border-radius:10px; }
+.controls { display:flex; gap:6px; margin-bottom:10px; }
+button { background:#007acc; color:#fff; border:none; padding:6px 10px; border-radius:6px; cursor:pointer; }
+button.active { background:#005f9e; }
+table { width:100%; border-collapse:collapse; margin-top:12px; }
+th, td { padding:8px; border-bottom:1px solid #ddd; text-align:center; }
+th { background:#abd6de; font-weight:700; }
+.no-data { text-align:center; color:#777; padding:12px; }
+.user-info { margin-bottom:10px; font-size:14px; }
 </style>
 </head>
 <body>
-<header>Roster Manager v9</header>
-<div class="wrap" id="loginWrap">
-<h3>Login / Signup</h3>
-<input id="username" placeholder="Teller ID"/><br/>
-<input id="password" type="password" placeholder="Password"/><br/>
-<button onclick="login()">Login</button>
-<button onclick="signup()">Signup</button>
-<div id="loginMsg"></div>
-</div>
 
-<div class="wrap" id="attendanceWrap" style="display:none;">
-<h3 id="userInfo"></h3>
-<div>Month: <span id="monthName"></span></div>
-<table id="attendanceTable">
-<tr><th>Date</th><th>Shift</th><th>Booth</th><th>Arrival</th><th>Departure</th><th>OT Hours</th></tr>
-</table>
+<header>Attendance - Roster Manager</header>
+
+<div class="wrap">
+
+  <!-- User Info -->
+  <div class="user-info" id="userInfo"></div>
+
+  <!-- Date Controls -->
+  <div class="controls">
+    <button onclick="changeDay(-1)">◀ Prev</button>
+    <input type="date" id="attDate">
+    <button onclick="changeDay(1)">Next ▶</button>
+  </div>
+
+  <!-- Mode toggle -->
+  <div class="controls">
+    <button id="b6" class="active" onclick="setMode('6h')">6 Hours</button>
+    <button id="b8" onclick="setMode('8h')">8 Hours</button>
+  </div>
+
+  <!-- Attendance Table -->
+  <div id="attTable"></div>
+
 </div>
 
 <script>
-const firebaseConfig = {
- apiKey:"AIzaSyANN1IPnC6vODqIWiOpZgWutnP-LlmH48s",
+/* 🔥 Firebase Init */
+firebase.initializeApp({
+  apiKey:"AIzaSyANN1IPnC6vODqIWiOpZgWutnP-LlmH48s",
  authDomain:"gelanigama-roster-team-a.firebaseapp.com",
  projectId:"gelanigama-roster-team-a"
-};
-firebase.initializeApp(firebaseConfig);
+});
 const db = firebase.firestore();
 
-let currentUser = null;
+/* ---------------- State ---------------- */
+let currentDate = new Date();
+let currentMode = "6h";
 
-// SIGNUP
-async function signup(){
- const username=document.getElementById('username').value;
- const password=document.getElementById('password').value;
- if(!username || !password){alert("Enter all fields"); return;}
+/* Simulate logged-in user details */
+let currentUser = {
+  name: "John D.",
+  pf: "PF123",
+  team: "team2Roster",
+  tellerId: "171",
+  basicSalary: 60000
+};
 
- await db.collection('users').doc(username).set({
-   tellerId: username,
-   password: password,
-   name: username,
-   initials: "",
-   team: "Team2",
-   pf: "PF123",
-   basicSalary: 60000,
-   mobile: ""
- });
- alert("Signup complete, login now");
+/* ---------------- UI Setup ---------------- */
+document.getElementById('attDate').value = currentDate.toISOString().split('T')[0];
+document.getElementById('userInfo').innerHTML = `
+Name: ${currentUser.name} | PF: ${currentUser.pf} | Team: ${currentUser.team} | Basic Salary: ${currentUser.basicSalary}
+`;
+
+function setMode(mode){
+  currentMode = mode;
+  b6.classList.toggle('active', mode==='6h');
+  b8.classList.toggle('active', mode==='8h');
+  loadAttendance();
 }
 
-// LOGIN
-async function login(){
- const username=document.getElementById('username').value;
- const password=document.getElementById('password').value;
- if(!username || !password){alert("Enter all fields"); return;}
-
- const doc = await db.collection('users').doc(username).get();
- if(!doc.exists){alert("User not found"); return;}
- const data = doc.data();
- if(data.password !== password){alert("Wrong password"); return;}
-
- currentUser = data;
- document.getElementById('loginWrap').style.display="none";
- document.getElementById('attendanceWrap').style.display="block";
- document.getElementById('userInfo').innerText=`${data.name} (${data.initials}) | PF: ${data.pf} | Team: ${data.team} | Salary: ${data.basicSalary}`;
- document.getElementById('monthName').innerText=new Date().toLocaleString('default',{month:'long', year:'numeric'});
- loadAttendance();
+function changeDay(offset){
+  currentDate.setDate(currentDate.getDate()+offset);
+  attDate.value = currentDate.toISOString().split('T')[0];
+  loadAttendance();
 }
 
-// LOAD ATTENDANCE
+attDate.onchange = e => {
+  currentDate = new Date(e.target.value);
+  loadAttendance();
+};
+
+/* ---------------- Fetch Daily Roster ---------------- */
+async function getDailyRoster(dateStr, tellerId, mode){
+  const teams = ["team1Roster","team2Roster","team3Roster"];
+  for(const team of teams){
+    const doc = await db.collection(team).doc(dateStr).get();
+    if(!doc.exists) continue;
+    const data = doc.data();
+    if(data.offDay) continue;
+    const tellers = data.tellers||[];
+    for(const t of tellers){
+      if(t.teller === tellerId){
+        const booth = mode==="8h" ? t.booth8||t.booth6 : t.booth6;
+        return { team, shift:t.shift, booth: booth||"-" };
+      }
+    }
+  }
+  return null;
+}
+
+/* ---------------- Attendance Table ---------------- */
 async function loadAttendance(){
- const month = new Date().getMonth()+1;
- const year = new Date().getFullYear();
- const table=document.getElementById('attendanceTable');
+  const dateStr = currentDate.toISOString().split('T')[0];
+  attTable.innerHTML = "Loading...";
+  
+  const roster = await getDailyRoster(dateStr, currentUser.tellerId, currentMode);
+  if(!roster){
+    attTable.innerHTML = `<div class="no-data">No roster for ${dateStr}</div>`;
+    return;
+  }
 
- // get all days of current month
- const daysInMonth = new Date(year, month, 0).getDate();
- for(let d=1; d<=daysInMonth; d++){
-   const dateStr=`${year}-${month.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+  // Default arrival/departure times based on shift
+  let defaultArrival = roster.shift==="day" ? "06:30" : "18:30";
+  let defaultDeparture = roster.shift==="day" ? "19:30" : "07:30";
+  
+  // Round arrival to next 15min, departure to last 15min
+  defaultArrival = roundUp15(defaultArrival);
+  defaultDeparture = roundDown15(defaultDeparture);
 
-   // check Firestore attendance
-   const attDoc = await db.collection('attendance').doc(dateStr).get();
-   let row = {shift:'-', booth:'-', arrival:'-', departure:'-', ot:0};
+  // OT calculation (over 8 hours)
+  const otHours = calculateOT(defaultArrival, defaultDeparture);
 
-   if(attDoc.exists){
-     const attData = attDoc.data();
-     const tellerRow = attData.find(a=>a.tellerId===currentUser.tellerId);
-     if(tellerRow) row = {shift:tellerRow.shift, booth:tellerRow.booth, arrival:tellerRow.arrivalTime, departure:tellerRow.departureTime, ot:tellerRow.otHours};
-   }
-
-   table.innerHTML+=`<tr><td>${dateStr}</td><td>${row.shift}</td><td>${row.booth}</td><td>${row.arrival}</td><td>${row.departure}</td><td>${row.ot}</td></tr>`;
- }
+  // Render Table
+  attTable.innerHTML = `
+    <table>
+      <tr>
+        <th>Date</th><th>Shift</th><th>Booth</th><th>Arrival</th><th>Departure</th><th>OT Hours</th>
+      </tr>
+      <tr>
+        <td>${dateStr}</td>
+        <td>${roster.shift}</td>
+        <td>${roster.booth}</td>
+        <td>${defaultArrival}</td>
+        <td>${defaultDeparture}</td>
+        <td>${otHours}</td>
+      </tr>
+    </table>
+  `;
 }
+
+/* ---------------- Utility ---------------- */
+function roundUp15(time){
+  const [h,m] = time.split(":").map(Number);
+  const minutes = Math.ceil(m/15)*15;
+  const hr = minutes===60 ? h+1 : h;
+  const min = minutes===60 ? 0 : minutes;
+  return `${String(hr).padStart(2,"0")}:${String(min).padStart(2,"0")}`;
+}
+function roundDown15(time){
+  const [h,m] = time.split(":").map(Number);
+  const minutes = Math.floor(m/15)*15;
+  return `${String(h).padStart(2,"0")}:${String(minutes).padStart(2,"0")}`;
+}
+function calculateOT(arrival, departure){
+  const [aH,aM] = arrival.split(":").map(Number);
+  const [dH,dM] = departure.split(":").map(Number);
+  let totalH = dH - aH + (dM - aM)/60;
+  return totalH>8 ? (totalH-8).toFixed(2) : "0.00";
+}
+
+/* ---------------- Init ---------------- */
+loadAttendance();
 </script>
+
 </body>
-  </html>
+</html>
