@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Roster Manager v9</title>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
+<style>
+body{font-family:Segoe UI;margin:0;padding:0;}
+header{background:#007acc;color:#fff;padding:12px;text-align:center;}
+.wrap{max-width:600px;margin:20px auto;padding:12px;background:#f4f4f4;border-radius:10px;}
+input,button{padding:8px;margin:4px;border-radius:6px;border:1px solid #ccc;}
+button{background:#007acc;color:#fff;border:none;}
+table{width:100%;border-collapse:collapse;margin-top:12px;}
+th,td{border:1px solid #ccc;padding:6px;text-align:center;}
+</style>
+</head>
+<body>
+<header>Roster Manager v9</header>
+<div class="wrap" id="loginWrap">
+<h3>Login / Signup</h3>
+<input id="username" placeholder="Teller ID"/><br/>
+<input id="password" type="password" placeholder="Password"/><br/>
+<button onclick="login()">Login</button>
+<button onclick="signup()">Signup</button>
+<div id="loginMsg"></div>
+</div>
+
+<div class="wrap" id="attendanceWrap" style="display:none;">
+<h3 id="userInfo"></h3>
+<div>Month: <span id="monthName"></span></div>
+<table id="attendanceTable">
+<tr><th>Date</th><th>Shift</th><th>Booth</th><th>Arrival</th><th>Departure</th><th>OT Hours</th></tr>
+</table>
+</div>
+
+<script>
+const firebaseConfig = {
+ apiKey:"YOUR_API_KEY",
+ authDomain:"YOUR_AUTH_DOMAIN",
+ projectId:"YOUR_PROJECT_ID"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let currentUser = null;
+
+// SIGNUP
+async function signup(){
+ const username=document.getElementById('username').value;
+ const password=document.getElementById('password').value;
+ if(!username || !password){alert("Enter all fields"); return;}
+
+ await db.collection('users').doc(username).set({
+   tellerId: username,
+   password: password,
+   name: username,
+   initials: "",
+   team: "Team2",
+   pf: "PF123",
+   basicSalary: 60000,
+   mobile: ""
+ });
+ alert("Signup complete, login now");
+}
+
+// LOGIN
+async function login(){
+ const username=document.getElementById('username').value;
+ const password=document.getElementById('password').value;
+ if(!username || !password){alert("Enter all fields"); return;}
+
+ const doc = await db.collection('users').doc(username).get();
+ if(!doc.exists){alert("User not found"); return;}
+ const data = doc.data();
+ if(data.password !== password){alert("Wrong password"); return;}
+
+ currentUser = data;
+ document.getElementById('loginWrap').style.display="none";
+ document.getElementById('attendanceWrap').style.display="block";
+ document.getElementById('userInfo').innerText=`${data.name} (${data.initials}) | PF: ${data.pf} | Team: ${data.team} | Salary: ${data.basicSalary}`;
+ document.getElementById('monthName').innerText=new Date().toLocaleString('default',{month:'long', year:'numeric'});
+ loadAttendance();
+}
+
+// LOAD ATTENDANCE
+async function loadAttendance(){
+ const month = new Date().getMonth()+1;
+ const year = new Date().getFullYear();
+ const table=document.getElementById('attendanceTable');
+
+ // get all days of current month
+ const daysInMonth = new Date(year, month, 0).getDate();
+ for(let d=1; d<=daysInMonth; d++){
+   const dateStr=`${year}-${month.toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+
+   // check Firestore attendance
+   const attDoc = await db.collection('attendance').doc(dateStr).get();
+   let row = {shift:'-', booth:'-', arrival:'-', departure:'-', ot:0};
+
+   if(attDoc.exists){
+     const attData = attDoc.data();
+     const tellerRow = attData.find(a=>a.tellerId===currentUser.tellerId);
+     if(tellerRow) row = {shift:tellerRow.shift, booth:tellerRow.booth, arrival:tellerRow.arrivalTime, departure:tellerRow.departureTime, ot:tellerRow.otHours};
+   }
+
+   table.innerHTML+=`<tr><td>${dateStr}</td><td>${row.shift}</td><td>${row.booth}</td><td>${row.arrival}</td><td>${row.departure}</td><td>${row.ot}</td></tr>`;
+ }
+}
+</script>
+</body>
+  </html>
