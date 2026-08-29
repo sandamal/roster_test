@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -298,6 +299,32 @@ tr:last-child td { border-bottom: none; }
     </div>
   </div>
 
+  <!-- L EXTRA BOOTH DUTY COVER UP CARD -->
+  <div class="summary-box" style="border-left:4px solid #f59e0b; background:#fffbeb; margin-top:20px;">
+    <div class="summary-title" style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="color:#b45309; display:flex; align-items:center; gap:6px;">
+        🏛️ L Extra Booth Duty Cover Up
+      </span>
+      <button id="lExtraAssignBtn" class="btn-sm btn-success" style="display:none;" onclick="openLExtraModal()">+ Assign Duty</button>
+    </div>
+    <div id="lExtraContent">
+      <div class="no" style="padding:8px;">Loading L Extra Booth Duty details...</div>
+    </div>
+  </div>
+
+  <!-- J3 BOOTH DUTY COVER UP CARD -->
+  <div class="summary-box" style="border-left:4px solid #10b981; background:#ecfdf5; margin-top:20px;">
+    <div class="summary-title" style="display:flex; justify-content:space-between; align-items:center;">
+      <span style="color:#047857; display:flex; align-items:center; gap:6px;">
+        🏛️ J3 Booth Duty Cover Up
+      </span>
+      <button id="j3AssignBtn" class="btn-sm btn-success" style="display:none;" onclick="openJ3Modal()">+ Assign Duty</button>
+    </div>
+    <div id="j3Content">
+      <div class="no" style="padding:8px;">Loading J3 Booth Duty details...</div>
+    </div>
+  </div>
+
   <!-- SUMMARY DETAILS UNDER ROSTER -->
   <div class="summary-box">
     <div class="summary-title">
@@ -521,6 +548,86 @@ tr:last-child td { border-bottom: none; }
   </div>
 </div>
 
+<!-- L EXTRA BOOTH DUTY MODAL -->
+<div id="lExtraModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Assign L Extra Booth Duty</div>
+      <button class="close-btn" onclick="closeLExtraModal()">&times;</button>
+    </div>
+    <form onsubmit="handleSaveLExtra(event)">
+      <div style="display:flex; gap:8px;">
+        <div class="form-group" style="flex:1;">
+          <label>Date</label>
+          <input type="date" id="lExtraDate" required>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Shift</label>
+          <select id="lExtraShift" required>
+            <option value="day">Day Shift</option>
+            <option value="night">Night Shift</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Assigned Teller (ID & Nickname)</label>
+        <select id="lExtraTeller" required>
+          <option value="">Select Teller...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Booth / Remarks (Optional)</label>
+        <input type="text" id="lExtraRemarks" placeholder="e.g. L Extra Booth 1 / Gate Duty">
+      </div>
+
+      <div id="lExtraError" style="color:#ef4444; font-size:12px; margin-bottom:8px; display:none;"></div>
+      <button type="submit" class="btn-success" style="width:100%;">Save L Extra Booth Duty</button>
+    </form>
+  </div>
+</div>
+
+<!-- J3 BOOTH DUTY MODAL -->
+<div id="j3Modal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <div class="modal-title">Assign J3 Booth Duty</div>
+      <button class="close-btn" onclick="closeJ3Modal()">&times;</button>
+    </div>
+    <form onsubmit="handleSaveJ3(event)">
+      <div style="display:flex; gap:8px;">
+        <div class="form-group" style="flex:1;">
+          <label>Date</label>
+          <input type="date" id="j3Date" required>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Shift</label>
+          <select id="j3Shift" required>
+            <option value="day">Day Shift</option>
+            <option value="night">Night Shift</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Assigned Teller (ID & Nickname)</label>
+        <select id="j3Teller" required>
+          <option value="">Select Teller...</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Booth / Remarks (Optional)</label>
+        <input type="text" id="j3Remarks" placeholder="e.g. J3 Booth 1 / Gate Duty">
+      </div>
+
+      <div id="j3Error" style="color:#ef4444; font-size:12px; margin-bottom:8px; display:none;"></div>
+      <button type="submit" class="btn-success" style="width:100%;">Save J3 Booth Duty</button>
+    </form>
+  </div>
+</div>
+
 
 <script>
 /* 🔥 FIREBASE CONFIG */
@@ -579,11 +686,15 @@ function updateUserUI() {
   const userBar = document.getElementById("userStatusBar");
   const authBtn = document.getElementById("authBtn");
   const mExtraBtn = document.getElementById("mExtraAssignBtn");
+  const lExtraBtn = document.getElementById("lExtraAssignBtn");
+  const j3Btn = document.getElementById("j3AssignBtn");
   
   if (currentUserProfile) {
     authBtn.style.display = "none";
     userBar.style.display = "flex";
     if (mExtraBtn) mExtraBtn.style.display = "inline-block";
+    if (lExtraBtn) lExtraBtn.style.display = "inline-block";
+    if (j3Btn) j3Btn.style.display = "inline-block";
     
     let displayStr = currentUserProfile.nickName ? `${currentUserProfile.name} (${currentUserProfile.nickName})` : currentUserProfile.name;
     if (currentUserProfile.tellerId) displayStr += ` [ID: ${currentUserProfile.tellerId}]`;
@@ -595,6 +706,8 @@ function updateUserUI() {
     authBtn.style.display = "inline-block";
     userBar.style.display = "none";
     if (mExtraBtn) mExtraBtn.style.display = "none";
+    if (lExtraBtn) lExtraBtn.style.display = "none";
+    if (j3Btn) j3Btn.style.display = "none";
   }
 }
 
@@ -670,6 +783,7 @@ async function handleSignIn(e) {
     });
 
     if (loggedIn) {
+      localStorage.setItem("dailyRosterAuthIdent", identifier);
       updateUserUI();
       closeAuthModal();
       load();
@@ -803,6 +917,7 @@ async function handleCreateAccount(e) {
 }
 
 function signOutUser() {
+  localStorage.removeItem("dailyRosterAuthIdent");
   auth.signOut();
   currentUserProfile = null;
   updateUserUI();
@@ -900,6 +1015,8 @@ async function load(){
     render("NIGHT TEAM (" + label + ")", nightRows, nightBox, absentMap, coveringMap);
 
     renderMExtraSection(id);
+    renderLExtraSection(id);
+    renderJ3Section(id);
     renderSummarySection(id);
 
   } catch(e) {
@@ -1035,6 +1152,98 @@ async function renderMExtraSection(dateStr) {
     mExtraContent.innerHTML = html;
   } catch (e) {
     mExtraContent.innerHTML = `<div class="no">Error loading M Extra Duty: ${e.message}</div>`;
+  }
+}
+
+/* ---------------- RENDER L EXTRA BOOTH DUTY SECTION ---------------- */
+async function renderLExtraSection(dateStr) {
+  const lExtraContent = document.getElementById("lExtraContent");
+  const isAdmin = currentUserProfile && currentUserProfile.role === 'admin';
+  const currentTellerId = currentUserProfile ? currentUserProfile.tellerId : null;
+
+  try {
+    const snap = await db.collection("lExtraBoothDuty").where("date", "==", dateStr).get();
+    if (snap.empty) {
+      lExtraContent.innerHTML = `<div class="no" style="padding:10px; font-size:13px;">No L Extra Booth Duty assigned for ${dateStr}.</div>`;
+      return;
+    }
+
+    let html = "";
+    snap.forEach(doc => {
+      const data = doc.data();
+      const docId = doc.id;
+      const tProf = registeredUserMap[data.tellerId];
+      const nickName = tProf && tProf.nickName ? ` (${tProf.nickName})` : "";
+      const shiftTag = (data.shift || "day").toUpperCase() + " SHIFT";
+      const isOwnerOrAdmin = isAdmin || (currentTellerId && currentTellerId.toString().trim() === (data.tellerId || '').toString().trim());
+
+      html += `
+        <div class="summary-item" style="border-left-color: #f59e0b;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <span class="date-tag" style="color:#b45309;">📅 Date: ${data.date}</span>
+              <span style="background:#f59e0b; color:#fff; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-left:6px;">${shiftTag}</span>
+              - <strong>${data.remarks || 'L Extra Booth Duty'}</strong>
+            </div>
+            ${isOwnerOrAdmin ? `<button class="btn-sm" style="background:#ef4444; color:#fff; padding:3px 8px; border-radius:4px;" onclick="deleteLExtraDuty('${docId}')">🗑️ Reset</button>` : ''}
+          </div>
+          <div class="cover-details" style="margin-top:6px;">
+            🏛️ <strong>Assigned Teller:</strong> Teller ID ${data.tellerId}${nickName}
+            <br>
+            👤 <span style="font-size:11px; color:#64748b;">Assigned By: ${data.createdBy || 'Teller'}</span>
+          </div>
+        </div>
+      `;
+    });
+    lExtraContent.innerHTML = html;
+  } catch (e) {
+    lExtraContent.innerHTML = `<div class="no">Error loading L Extra Duty: ${e.message}</div>`;
+  }
+}
+
+/* ---------------- RENDER J3 BOOTH DUTY SECTION ---------------- */
+async function renderJ3Section(dateStr) {
+  const j3Content = document.getElementById("j3Content");
+  const isAdmin = currentUserProfile && currentUserProfile.role === 'admin';
+  const currentTellerId = currentUserProfile ? currentUserProfile.tellerId : null;
+
+  try {
+    const snap = await db.collection("j3BoothDuty").where("date", "==", dateStr).get();
+    if (snap.empty) {
+      j3Content.innerHTML = `<div class="no" style="padding:10px; font-size:13px;">No J3 Booth Duty assigned for ${dateStr}.</div>`;
+      return;
+    }
+
+    let html = "";
+    snap.forEach(doc => {
+      const data = doc.data();
+      const docId = doc.id;
+      const tProf = registeredUserMap[data.tellerId];
+      const nickName = tProf && tProf.nickName ? ` (${tProf.nickName})` : "";
+      const shiftTag = (data.shift || "day").toUpperCase() + " SHIFT";
+      const isOwnerOrAdmin = isAdmin || (currentTellerId && currentTellerId.toString().trim() === (data.tellerId || '').toString().trim());
+
+      html += `
+        <div class="summary-item" style="border-left-color: #10b981;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+              <span class="date-tag" style="color:#047857;">📅 Date: ${data.date}</span>
+              <span style="background:#10b981; color:#fff; padding:1px 6px; border-radius:4px; font-size:10px; font-weight:700; margin-left:6px;">${shiftTag}</span>
+              - <strong>${data.remarks || 'J3 Booth Duty'}</strong>
+            </div>
+            ${isOwnerOrAdmin ? `<button class="btn-sm" style="background:#ef4444; color:#fff; padding:3px 8px; border-radius:4px;" onclick="deleteJ3Duty('${docId}')">🗑️ Reset</button>` : ''}
+          </div>
+          <div class="cover-details" style="margin-top:6px;">
+            🏛️ <strong>Assigned Teller:</strong> Teller ID ${data.tellerId}${nickName}
+            <br>
+            👤 <span style="font-size:11px; color:#64748b;">Assigned By: ${data.createdBy || 'Teller'}</span>
+          </div>
+        </div>
+      `;
+    });
+    j3Content.innerHTML = html;
+  } catch (e) {
+    j3Content.innerHTML = `<div class="no">Error loading J3 Duty: ${e.message}</div>`;
   }
 }
 
@@ -1183,6 +1392,184 @@ async function deleteMExtraDuty(docId) {
   }
 }
 
+/* ---------------- L EXTRA BOOTH DUTY MODAL ACTIONS ---------------- */
+function openLExtraModal() {
+  document.getElementById("lExtraModal").classList.add("open");
+  const isoDate = currentDate.toISOString().split("T")[0];
+  document.getElementById("lExtraDate").value = isoDate;
+  
+  const lSelect = document.getElementById("lExtraTeller");
+  lSelect.innerHTML = `<option value="">Select Teller...</option>`;
+
+  const allTellerIds = new Set();
+  Object.values(registeredUserMap).forEach(u => {
+    if (u.tellerId) allTellerIds.add(u.tellerId.toString().trim());
+  });
+
+  if (window.loadedRosterTellerIds) {
+    window.loadedRosterTellerIds.forEach(id => allTellerIds.add(id));
+  }
+
+  for (let i = 101; i <= 125; i++) {
+    allTellerIds.add(i.toString());
+  }
+
+  const sortedTellerIds = Array.from(allTellerIds).sort((a, b) => {
+    let numA = parseInt(a.replace(/[^\d]/g, '')) || 0;
+    let numB = parseInt(b.replace(/[^\d]/g, '')) || 0;
+    return numA - numB;
+  });
+
+  sortedTellerIds.forEach(tId => {
+    let userProf = registeredUserMap[tId];
+    let label = userProf && userProf.nickName ? `Teller ${tId} (${userProf.nickName})` : `Teller ${tId}`;
+    lSelect.innerHTML += `<option value="${tId}">${label}</option>`;
+  });
+
+  if (currentUserProfile && currentUserProfile.tellerId) {
+    lSelect.value = currentUserProfile.tellerId;
+  }
+}
+
+function closeLExtraModal() {
+  document.getElementById("lExtraModal").classList.remove("open");
+}
+
+async function handleSaveLExtra(e) {
+  e.preventDefault();
+  const date = document.getElementById("lExtraDate").value;
+  const shift = document.getElementById("lExtraShift").value;
+  const tellerId = document.getElementById("lExtraTeller").value;
+  const remarks = document.getElementById("lExtraRemarks").value.trim() || "L Extra Booth Duty";
+  const errDiv = document.getElementById("lExtraError");
+  errDiv.style.display = "none";
+
+  if (!tellerId) {
+    errDiv.innerText = "Please select a teller for L Extra Booth Duty!";
+    errDiv.style.display = "block";
+    return;
+  }
+
+  try {
+    const docId = `${date}_lextra_${tellerId}_${shift}`;
+    await db.collection("lExtraBoothDuty").doc(docId).set({
+      date: date,
+      shift: shift,
+      tellerId: tellerId,
+      remarks: remarks,
+      createdBy: currentUserProfile ? (currentUserProfile.nickName || currentUserProfile.name || currentUserProfile.pfNo) : "Teller",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    closeLExtraModal();
+    load();
+    alert("L Extra Booth Duty assigned successfully!");
+  } catch(e) {
+    errDiv.innerText = e.message || "Failed to save L Extra Booth Duty.";
+    errDiv.style.display = "block";
+  }
+}
+
+async function deleteLExtraDuty(docId) {
+  if (!confirm("Are you sure you want to reset/delete this L Extra Booth Duty entry?")) return;
+  try {
+    await db.collection("lExtraBoothDuty").doc(docId).delete();
+    alert("L Extra Booth Duty reset successfully!");
+    load();
+  } catch(e) {
+    alert("Failed to delete L Extra Duty: " + e.message);
+  }
+}
+
+/* ---------------- J3 BOOTH DUTY MODAL ACTIONS ---------------- */
+function openJ3Modal() {
+  document.getElementById("j3Modal").classList.add("open");
+  const isoDate = currentDate.toISOString().split("T")[0];
+  document.getElementById("j3Date").value = isoDate;
+  
+  const j3Select = document.getElementById("j3Teller");
+  j3Select.innerHTML = `<option value="">Select Teller...</option>`;
+
+  const allTellerIds = new Set();
+  Object.values(registeredUserMap).forEach(u => {
+    if (u.tellerId) allTellerIds.add(u.tellerId.toString().trim());
+  });
+
+  if (window.loadedRosterTellerIds) {
+    window.loadedRosterTellerIds.forEach(id => allTellerIds.add(id));
+  }
+
+  for (let i = 101; i <= 125; i++) {
+    allTellerIds.add(i.toString());
+  }
+
+  const sortedTellerIds = Array.from(allTellerIds).sort((a, b) => {
+    let numA = parseInt(a.replace(/[^\d]/g, '')) || 0;
+    let numB = parseInt(b.replace(/[^\d]/g, '')) || 0;
+    return numA - numB;
+  });
+
+  sortedTellerIds.forEach(tId => {
+    let userProf = registeredUserMap[tId];
+    let label = userProf && userProf.nickName ? `Teller ${tId} (${userProf.nickName})` : `Teller ${tId}`;
+    j3Select.innerHTML += `<option value="${tId}">${label}</option>`;
+  });
+
+  if (currentUserProfile && currentUserProfile.tellerId) {
+    j3Select.value = currentUserProfile.tellerId;
+  }
+}
+
+function closeJ3Modal() {
+  document.getElementById("j3Modal").classList.remove("open");
+}
+
+async function handleSaveJ3(e) {
+  e.preventDefault();
+  const date = document.getElementById("j3Date").value;
+  const shift = document.getElementById("j3Shift").value;
+  const tellerId = document.getElementById("j3Teller").value;
+  const remarks = document.getElementById("j3Remarks").value.trim() || "J3 Booth Duty";
+  const errDiv = document.getElementById("j3Error");
+  errDiv.style.display = "none";
+
+  if (!tellerId) {
+    errDiv.innerText = "Please select a teller for J3 Booth Duty!";
+    errDiv.style.display = "block";
+    return;
+  }
+
+  try {
+    const docId = `${date}_j3_${tellerId}_${shift}`;
+    await db.collection("j3BoothDuty").doc(docId).set({
+      date: date,
+      shift: shift,
+      tellerId: tellerId,
+      remarks: remarks,
+      createdBy: currentUserProfile ? (currentUserProfile.nickName || currentUserProfile.name || currentUserProfile.pfNo) : "Teller",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    closeJ3Modal();
+    load();
+    alert("J3 Booth Duty assigned successfully!");
+  } catch(e) {
+    errDiv.innerText = e.message || "Failed to save J3 Booth Duty.";
+    errDiv.style.display = "block";
+  }
+}
+
+async function deleteJ3Duty(docId) {
+  if (!confirm("Are you sure you want to reset/delete this J3 Booth Duty entry?")) return;
+  try {
+    await db.collection("j3BoothDuty").doc(docId).delete();
+    alert("J3 Booth Duty reset successfully!");
+    load();
+  } catch(e) {
+    alert("Failed to delete J3 Duty: " + e.message);
+  }
+}
+
 /* ADMIN RESET / DELETE SHIFT CHANGE */
 async function resetShiftChange(docId) {
   if (!currentUserProfile || currentUserProfile.role !== 'admin') {
@@ -1294,7 +1681,28 @@ async function handleSaveCoverup(e) {
   }
 }
 
-load();
+async function restoreSession() {
+  if (currentUserProfile) return;
+  const savedIdent = localStorage.getItem("dailyRosterAuthIdent");
+  if (!savedIdent) return;
+  try {
+    const snap = await db.collection("users").get();
+    snap.forEach(doc => {
+      const d = doc.data();
+      const match = (d.pfNo && d.pfNo.trim().toLowerCase() === savedIdent.toLowerCase()) ||
+                    (d.tellerId && d.tellerId.trim().toLowerCase() === savedIdent.toLowerCase()) ||
+                    (d.whatsappNumber && d.whatsappNumber.trim() === savedIdent);
+      if (match && !currentUserProfile) {
+        currentUserProfile = d;
+      }
+    });
+    if (currentUserProfile) updateUserUI();
+  } catch(e) {
+    console.error("Session restore failed:", e);
+  }
+}
+
+restoreSession().then(() => load());
 
 /* PWA INSTALLATION */
 let deferredPrompt;
